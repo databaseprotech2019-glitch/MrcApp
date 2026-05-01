@@ -1022,12 +1022,12 @@ if(!DB.users['admin@propeller.com']){
 // ── SESSION ──
 function restoreSession(){
   try{
-    const saved=sessionStorage.getItem('mrc_session11');
+   const saved=localStorage.getItem('mrc_session11');
     if(saved){const s=JSON.parse(saved);if(DB.users[s.email]){currentUser=DB.users[s.email];currentPage=s.page||'dashboard';doLogin_final(currentPage);return true;}}
   }catch(e){}
   return false;
 }
-function saveSession(){if(currentUser)sessionStorage.setItem('mrc_session11',JSON.stringify({email:currentUser.email,page:currentPage}));}
+function saveSession(){if(currentUser)localStorage.setItem('mrc_session11',JSON.stringify({email:currentUser.email,page:currentPage}));}
 
 // ── AUTH ──
 function switchTab(t){
@@ -1108,7 +1108,7 @@ function updateSidebarAvatar(){
 
 function doLogout(){
   _dashFilterEmail='all';
-  currentUser=null; sessionStorage.removeItem('mrc_session11');
+  currentUser=null; localStorage.removeItem('mrc_session11');
   document.getElementById('auth-page').classList.remove('hidden');
   document.getElementById('app-page').classList.add('hidden');
   document.getElementById('login-email').value='';
