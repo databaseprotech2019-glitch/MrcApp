@@ -2355,17 +2355,24 @@ function handleGuideFileUpload(input) {
 
       // Guide-ஐ Supabase-ல save பண்ணு (cross-device access)
 try {
-  await _supabase.from('guide_files').upsert({
-    guide_id: guideId,
-    course_id: DB.freeCourses[idx].id,
-    file_name: file.name,
-    file_type: file.type || 'application/octet-stream',
-    file_size: file.size,
-    data_url: dataUrl,
-    uploaded_at: new Date().toISOString()
-  });
+  const { error: upsertError } = await _supabase
+    .from('guide_files')
+    .upsert({
+      guide_id: guideId,
+      course_id: DB.freeCourses[idx].id,
+      file_name: file.name,
+      file_type: file.type || 'application/octet-stream',
+      file_size: file.size,
+      data_url: dataUrl,
+      uploaded_at: new Date().toISOString()
+    });
+  
+  if (upsertError) {
+    console.warn('Supabase guide save failed:', upsertError.message);
+    await GuideDB.save(guideId, dataUrl);
+  }
 } catch(e) {
-  console.warn('Supabase guide save failed, using IndexedDB:', e.message);
+  console.warn('Guide save failed, using IndexedDB:', e.message);
   await GuideDB.save(guideId, dataUrl);
 }
 
@@ -2421,16 +2428,15 @@ async function downloadGuide(guide) {
         .from('guide_files')
         .select('data_url')
         .eq('guide_id', guide.guideId)
-        .single();
+        .maybeSingle();  // ← single() → maybeSingle() மாத்துங்க!
       
-      if (error) throw new Error('Guide not found: ' + error.message);
-      if (data?.data_url) dataUrl = data.data_url;
+      if (!error && data?.data_url) dataUrl = data.data_url;
     }
     
     if (!dataUrl && guide.dataUrl) dataUrl = guide.dataUrl;
     
     if (!dataUrl) {
-      toast('Guide file not found. Admin must re-upload.', 'err');
+      toast('Guide not found. Please re-upload.', 'err');
       return;
     }
     
