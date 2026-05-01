@@ -1792,11 +1792,80 @@ function renderCourse(){
   return html;
 }
 
-function toggleModule(modIdx){
-  const body=document.getElementById('modbody-'+modIdx);const chev=document.getElementById('chevron-'+modIdx);
-  if(!body)return;const isHidden=body.style.display==='none';
-  body.style.display=isHidden?'':'none';if(chev)chev.classList.toggle('open',isHidden);
+function showCourseOverview(level){
+  const modal=document.getElementById('course-overview-modal');
+  const content=document.getElementById('overview-content');
+  const title=document.getElementById('overview-title');
+  const overviews={
+    basic:{
+      title:'Beginner Level Overview',
+      desc:'A comprehensive foundation in electronics, robotics, AI coding, and STEM innovation.',
+      highlights:[
+        {icon:'⚡',title:'Foundational Electronics',desc:'Circuit systems, component familiarization, gaming circuits'},
+        {icon:'🤖',title:'Robotics & Motion',desc:'Motion systems, gear mechanisms, mobile robotics fundamentals'},
+        {icon:'🧠',title:'Intelligent Systems',desc:'IR sensors, ultrasonic distance, multi-sensor integration'},
+        {icon:'🎮',title:'Animation & Game Logic',desc:'Character animations, directional logic, scoring systems'},
+        {icon:'🤖',title:'AI & Smart Coding',desc:'Face recognition, gesture control, NLP, capstone AI app'},
+        {icon:'🚗',title:'Robotic Simulation',desc:'Self-driving car, collision detection, color tracking'},
+        {icon:'💻',title:'Block-Based Programming',desc:'Scratch/Snap programming, loops, variables, extensions'},
+        {icon:'🔬',title:'Applied Science',desc:'DIY innovations and STEM home challenges'},
+        {icon:'📝',title:'Knowledge Evaluation',desc:'Theory and practical assessments'}
+      ]
+    },
+    intermediate:{
+      title:'Intermediate Level Overview',
+      desc:'Advanced robotics, IoT, mobile app development, drone technology and AI tools.',
+      highlights:[
+        {icon:'⚡',title:'Electronics & Circuits',desc:'Online simulation, circuit building and troubleshooting'},
+        {icon:'🤖',title:'Advanced Robotics',desc:'Bionic robots, mechatronic systems, climbing mechanisms'},
+        {icon:'🧠',title:'Robotics & AI',desc:'Computer vision, gesture interface, machine learning'},
+        {icon:'🚗',title:'Robotic Simulation',desc:'Self-driving car, obstacle avoidance, color tracking'},
+        {icon:'📡',title:'High-End Robotics',desc:'Microcontrollers, RFID, wireless communication'},
+        {icon:'🌐',title:'IoT & Connected Systems',desc:'Cloud connectivity, smart satellite capstone project'},
+        {icon:'📱',title:'Mobile App Development',desc:'Multi-page design, sensor integration, smart apps'},
+        {icon:'🚁',title:'Drone Technology',desc:'Flight principles, navigation, aerial applications'},
+        {icon:'🤖',title:'Online AI Tools',desc:'ChatGPT, Claude, Gamma.AI, InVideo, Krikey 3D'}
+      ]
+    },
+    advanced:{
+      title:'Expert Level Overview',
+      desc:'Professional-grade robotics, IoT surveillance, 3D design, and advanced AI systems.',
+      highlights:[
+        {icon:'⚡',title:'Electronics & Circuits',desc:'Advanced simulation, circuit debugging'},
+        {icon:'🤖',title:'Advanced Robotics',desc:'Biometric security, servo control, master-slave architecture'},
+        {icon:'🌐',title:'IoT & Surveillance',desc:'Video streaming, smart security systems'},
+        {icon:'🧠',title:'AI & Computer Vision',desc:'Object detection, face tracking, color recognition'},
+        {icon:'🔧',title:'Capstone Projects',desc:'TSOP remote control, RF applications, audio systems'},
+        {icon:'📱',title:'Mobile App Development',desc:'Full app lifecycle, multimedia integration, debugging'},
+        {icon:'🖨️',title:'3D Design & Manufacturing',desc:'Static/dynamic modeling, replication, scaling'},
+        {icon:'🚁',title:'Drone Technology',desc:'Advanced flight, aerial mapping and surveillance'},
+        {icon:'🤖',title:'Online AI Tools',desc:'ChatGPT, Claude, Gamma.AI, InVideo, Krikey 3D'}
+      ]
+    }
+  };
+  const ov=overviews[level]||overviews.basic;
+  title.textContent=ov.title;
+  content.innerHTML=`
+    <div style="font-size:13px;color:var(--text2);line-height:1.7;margin-bottom:20px;padding:14px;background:rgba(142,68,173,.06);border:1px solid rgba(142,68,173,.15);border-radius:10px">${ov.desc}</div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px">
+      ${ov.highlights.map(h=>`
+        <div style="background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:14px;display:flex;gap:12px;align-items:flex-start">
+          <div style="font-size:22px;flex-shrink:0">${h.icon}</div>
+          <div>
+            <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:3px">${h.title}</div>
+            <div style="font-size:11px;color:var(--text2);line-height:1.5">${h.desc}</div>
+          </div>
+        </div>
+      `).join('')}
+    </div>
+    <div style="margin-top:16px;padding:12px 16px;background:rgba(30,136,229,.06);border:1px solid rgba(30,136,229,.2);border-radius:10px;font-size:12px;color:#1E88E5;font-weight:700;text-align:center">
+      Tap any module above to expand topics ✨
+    </div>
+  `;
+  modal.classList.remove('hidden');
+  document.body.style.overflow='hidden';
 }
+
 function adminToggleTopic(email,level,modIdx,topicIdx){
   toggleTopic(email,level,modIdx,topicIdx);
   const done=isTopicComplete(email,level,modIdx,topicIdx);
