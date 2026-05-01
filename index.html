@@ -788,18 +788,41 @@ const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 // DB SAVE — localStorage + Supabase sync
 // ══════════════════════════════════════════
 async function saveDB() {
-  // Always save to localStorage first (fast)
   localStorage.setItem('mrc_db11', JSON.stringify(DB));
-
-  // Then sync to Supabase (background)
+  
   try {
-    await _supabase.from('app_data').upsert({
-      id: 'main',
-      data: DB,
-      updated_at: new Date().toISOString()
-    });
+    // First load latest from Supabase
+    const { data: latest } = await _supabase
+      .from('app_data')
+      .select('data')
+      .eq('id', 'main')
+      .single();
+    
+    // Merge latest with current changes
+    if (latest?.data) {
+      const merged = { ...latest.data, ...DB };
+      merged.users = { ...latest.data.users, ...DB.users };
+      merged.progress = { ...latest.data.progress, ...DB.progress };
+      merged.attendance = { ...latest.data.attendance, ...DB.attendance };
+      merged.feedbacks = { ...latest.data.feedbacks, ...DB.feedbacks };
+      
+      await _supabase.from('app_data').upsert({
+        id: 'main',
+        data: merged,
+        updated_at: new Date().toISOString()
+      });
+      
+      DB = merged;
+      localStorage.setItem('mrc_db11', JSON.stringify(DB));
+    } else {
+      await _supabase.from('app_data').upsert({
+        id: 'main',
+        data: DB,
+        updated_at: new Date().toISOString()
+      });
+    }
   } catch (err) {
-    console.warn('Supabase sync failed (using local):', err.message);
+    console.warn('Supabase sync failed:', err.message);
   }
 }
 
