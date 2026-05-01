@@ -3340,16 +3340,24 @@ document.addEventListener('click',function(e){
 window.addEventListener('load', async () => {
   document.getElementById('auth-page').style.opacity = '0.5';
 
-  // Local file-ல Supabase work ஆகாது — localStorage பாரு first
-  const isLocalFile = window.location.protocol === 'file:';
-  
-  if (!isLocalFile) {
-    const loaded = await loadDBFromSupabase();
-    if (!loaded) applyDBMigrations();
-  } else {
-    // Local file — localStorage மட்டும் use பண்ணு
+  try {
+    // Always load from Supabase first
+    const { data, error } = await _supabase
+      .from('app_data')
+      .select('data')
+      .eq('id', 'main')
+      .single();
+
+    if (data?.data) {
+      DB = data.data;
+      localStorage.setItem('mrc_db11', JSON.stringify(DB));
+      applyDBMigrations();
+    } else {
+      applyDBMigrations();
+    }
+  } catch(e) {
+    console.warn('Supabase load failed, using localStorage:', e);
     applyDBMigrations();
-    console.log('Local file mode — using localStorage only');
   }
 
   document.getElementById('auth-page').style.opacity = '1';
