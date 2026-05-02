@@ -985,7 +985,7 @@ function formatClassDateShortForStudent(email,dayNumber){
 // ══════════════════════════════════════════
 // STATE & DB
 // ══════════════════════════════════════════
-let DB=JSON.parse(localStorage.getItem('mrc_db11')||'{"users":{},"progress":{},"attendance":{},"feedbacks":{},"remarks":{},"information":[],"certificates":{},"referrals":[],"activities":{},"parentFeedbacks":[],"freeCourses":[],"profilePics":{},"studentsPlus":{},"settings":{}}');
+let DB={users:{},progress:{},attendance:{},feedbacks:{},remarks:{},information:[],certificates:{},referrals:[],activities:{},parentFeedbacks:[],freeCourses:[],profilePics:{},studentsPlus:{},settings:{}};
 let currentUser=null,currentPage='dashboard',adminAttnStudent=null,feedbackPriority='medium';
 let _lightboxPhoto=null, _pendingGuideIdx=null, _adminActivityStudent=null, _adminSPStudent=null;
 const SIX_MONTHS_MS=180*24*60*60*1000;
@@ -3366,14 +3366,13 @@ function postInformation(){
 }
 function deleteInformation(id){DB.information=(DB.information||[]).filter(n=>n.id!==id);saveDB();toast('Deleted','info');showPage('admin-information');}
 
-function toast(msg,type='success'){
-  const t=document.getElementById('toast');
-  const icons={success:'✅',info:'ℹ️',err:'❌',warn:'⚠️'};
-  t.innerHTML=`<span style="font-size:16px">${icons[type]||'✅'}</span><span>${msg}</span>`;
-  t.className=''; void t.offsetWidth;
-  t.className='show '+(type||'success');
-  clearTimeout(t._timer);
-  t._timer=setTimeout(()=>{t.style.transition='transform .25s ease,opacity .25s ease';t.style.transform='translateY(60px)';t.style.opacity='0';setTimeout(()=>{t.className='';t.style.transform='';t.style.opacity='';t.style.transition='';},260);},2800);
+function toggleModule(idx){
+  const body=document.getElementById('modbody-'+idx);
+  const chevron=document.getElementById('chevron-'+idx);
+  if(!body)return;
+  const isOpen=body.style.display!=='none';
+  body.style.display=isOpen?'none':'';
+  if(chevron)chevron.classList.toggle('open',!isOpen);
 }
 
 // Button ripple effect
@@ -3407,13 +3406,11 @@ window.addEventListener('load', async () => {
   try {
     const { data, error } = await _supabase
       .from('app_data')
-      .select('data')
+      .select('*')
       .eq('id', 'main');
 
-    const row = data?.[0];
-
-    if (row?.data) {
-      DB = row.data;
+    if (!error && data && data.length > 0 && data[0].data) {
+      DB = data[0].data;
       localStorage.setItem('mrc_db11', JSON.stringify(DB));
       applyDBMigrations();
       await _supabase.from('app_data').upsert({
@@ -3422,16 +3419,6 @@ window.addEventListener('load', async () => {
         updated_at: new Date().toISOString()
       });
     } else {
-      DB = {
-        users:{},progress:{},attendance:{},feedbacks:{},
-        remarks:{},information:[],certificates:{},referrals:[],
-        activities:{},parentFeedbacks:[],freeCourses:[],
-        profilePics:{},studentsPlus:{},
-        settings:{
-          googleReviewLink:'https://g.page/r/propeller-review',
-          communityLink:'https://chat.whatsapp.com/propeller-community'
-        }
-      };
       applyDBMigrations();
       await _supabase.from('app_data').upsert({
         id: 'main',
