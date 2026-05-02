@@ -1251,14 +1251,13 @@ function renderTicker(infos){
 
 // ── TOAST ──
 let _toastTimer=null;
-function toast(msg,type='success'){
-  const el=document.getElementById('toast');
-  el.textContent=msg;el.className='';
-  el.classList.add(type);
-  void el.offsetWidth;
-  el.classList.add('show');
-  if(_toastTimer)clearTimeout(_toastTimer);
-  _toastTimer=setTimeout(()=>el.classList.remove('show'),3000);
+function toggleModule(idx){
+  const body=document.getElementById('modbody-'+idx);
+  const chevron=document.getElementById('chevron-'+idx);
+  if(!body)return;
+  const isOpen=body.style.display!=='none';
+  body.style.display=isOpen?'none':'';
+  if(chevron)chevron.classList.toggle('open',!isOpen);
 }
 
 // ══════════════════════════════════════════
