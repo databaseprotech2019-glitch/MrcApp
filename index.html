@@ -780,8 +780,8 @@ input:focus,select:focus,textarea:focus{transition:border-color .18s,box-shadow 
 // ══════════════════════════════════════════
 // SUPABASE SETUP
 // ══════════════════════════════════════════
-const SUPABASE_URL = 'https://nzijflagvsemeojbfnud.supabase.co'; // ← உன் URL
-const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im56aWpmbGFndnNlbWVvamJmbnVkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc0NDU2NzYsImV4cCI6MjA5MzAyMTY3Nn0.rkx-VFZJpcwGa_f1EGaPSPFtUPspFXw5XFtGrKqcE-k'; // ← உன் anon key
+const SUPABASE_URL = 'https://fhrzkyunjshsjtxelmxc.supabase.co'; // ← உன் URL
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZocnpreXVuanNoc2p0eGVsbXhjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc3MTEwNTYsImV4cCI6MjA5MzI4NzA1Nn0.bNOyOAPcP0kBkcVJ8TrOuSiGY9pJEr7xkuqxPW25QtY'; // ← உன் anon key
 const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 // ══════════════════════════════════════════
@@ -789,38 +789,12 @@ const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 // ══════════════════════════════════════════
 async function saveDB() {
   localStorage.setItem('mrc_db11', JSON.stringify(DB));
-  
   try {
-    // First load latest from Supabase
-    const { data: latest } = await _supabase
-      .from('app_data')
-      .select('data')
-      .eq('id', 'main')
-      .single();
-    
-    // Merge latest with current changes
-    if (latest?.data) {
-      const merged = { ...latest.data, ...DB };
-      merged.users = { ...latest.data.users, ...DB.users };
-      merged.progress = { ...latest.data.progress, ...DB.progress };
-      merged.attendance = { ...latest.data.attendance, ...DB.attendance };
-      merged.feedbacks = { ...latest.data.feedbacks, ...DB.feedbacks };
-      
-      await _supabase.from('app_data').upsert({
-        id: 'main',
-        data: merged,
-        updated_at: new Date().toISOString()
-      });
-      
-      DB = merged;
-      localStorage.setItem('mrc_db11', JSON.stringify(DB));
-    } else {
-      await _supabase.from('app_data').upsert({
-        id: 'main',
-        data: DB,
-        updated_at: new Date().toISOString()
-      });
-    }
+    await _supabase.from('app_data').upsert({
+      id: 'main',
+      data: DB,
+      updated_at: new Date().toISOString()
+    });
   } catch (err) {
     console.warn('Supabase sync failed:', err.message);
   }
@@ -835,16 +809,15 @@ async function loadDBFromSupabase() {
       .from('app_data')
       .select('data')
       .eq('id', 'main')
-      .single();
-
+      .limit(1).then(r => ({data: r.data?.[0] ? {data: r.data[0].data} : null, error: r.error}));
     if (data?.data) {
       DB = data.data;
-      localStorage.setItem('mrc_db11', JSON.stringify(DB)); // cache update
+      localStorage.setItem('mrc_db11', JSON.stringify(DB));
       applyDBMigrations();
       return true;
     }
   } catch (err) {
-    console.warn('Supabase load failed, using localStorage:', err.message);
+    console.warn('Supabase load failed:', err.message);
   }
   return false;
 }
@@ -867,8 +840,8 @@ function applyDBMigrations() {
   if(!DB.settings.googleReviewLink)DB.settings.googleReviewLink='https://g.page/r/propeller-review';
   if(!DB.settings.communityLink)DB.settings.communityLink='https://chat.whatsapp.com/propeller-community';
   if(!DB.users['admin@propeller.com']){
-  DB.users['admin@propeller.com']={name:'Admin',password:'admin123',role:'admin',level:'basic',email:'admin@propeller.com',joinedAt:Date.now()};
-}
+    DB.users['admin@propeller.com']={name:'Admin',password:'admin123',role:'admin',level:'basic',email:'admin@propeller.com',joinedAt:Date.now()};
+  }
 }
 
 const GuideDB = {
@@ -1012,7 +985,7 @@ function formatClassDateShortForStudent(email,dayNumber){
 // ══════════════════════════════════════════
 // STATE & DB
 // ══════════════════════════════════════════
-let DB=JSON.parse(localStorage.getItem('mrc_db11')||'{"users":{},"progress":{},"attendance":{},"feedbacks":{},"remarks":{},"information":[],"certificates":{},"referrals":[],"activities":{},"parentFeedbacks":[],"freeCourses":[],"profilePics":{},"studentsPlus":{},"settings":{}}');
+let DB={users:{},progress:{},attendance:{},feedbacks:{},remarks:{},information:[],certificates:{},referrals:[],activities:{},parentFeedbacks:[],freeCourses:[],profilePics:{},studentsPlus:{},settings:{}};
 let currentUser=null,currentPage='dashboard',adminAttnStudent=null,feedbackPriority='medium';
 let _lightboxPhoto=null, _pendingGuideIdx=null, _adminActivityStudent=null, _adminSPStudent=null;
 const SIX_MONTHS_MS=180*24*60*60*1000;
@@ -1278,14 +1251,13 @@ function renderTicker(infos){
 
 // ── TOAST ──
 let _toastTimer=null;
-function toast(msg,type='success'){
-  const el=document.getElementById('toast');
-  el.textContent=msg;el.className='';
-  el.classList.add(type);
-  void el.offsetWidth;
-  el.classList.add('show');
-  if(_toastTimer)clearTimeout(_toastTimer);
-  _toastTimer=setTimeout(()=>el.classList.remove('show'),3000);
+function toggleModule(idx){
+  const body=document.getElementById('modbody-'+idx);
+  const chevron=document.getElementById('chevron-'+idx);
+  if(!body)return;
+  const isOpen=body.style.display!=='none';
+  body.style.display=isOpen?'none':'';
+  if(chevron)chevron.classList.toggle('open',!isOpen);
 }
 
 // ══════════════════════════════════════════
@@ -3394,14 +3366,13 @@ function postInformation(){
 }
 function deleteInformation(id){DB.information=(DB.information||[]).filter(n=>n.id!==id);saveDB();toast('Deleted','info');showPage('admin-information');}
 
-function toast(msg,type='success'){
-  const t=document.getElementById('toast');
-  const icons={success:'✅',info:'ℹ️',err:'❌',warn:'⚠️'};
-  t.innerHTML=`<span style="font-size:16px">${icons[type]||'✅'}</span><span>${msg}</span>`;
-  t.className=''; void t.offsetWidth;
-  t.className='show '+(type||'success');
-  clearTimeout(t._timer);
-  t._timer=setTimeout(()=>{t.style.transition='transform .25s ease,opacity .25s ease';t.style.transform='translateY(60px)';t.style.opacity='0';setTimeout(()=>{t.className='';t.style.transform='';t.style.opacity='';t.style.transition='';},260);},2800);
+function toggleModule(idx){
+  const body=document.getElementById('modbody-'+idx);
+  const chevron=document.getElementById('chevron-'+idx);
+  if(!body)return;
+  const isOpen=body.style.display!=='none';
+  body.style.display=isOpen?'none':'';
+  if(chevron)chevron.classList.toggle('open',!isOpen);
 }
 
 // Button ripple effect
@@ -3433,22 +3404,31 @@ window.addEventListener('load', async () => {
   document.getElementById('auth-page').style.opacity = '0.5';
 
   try {
-    // Always load from Supabase first
     const { data, error } = await _supabase
       .from('app_data')
-      .select('data')
-      .eq('id', 'main')
-      .single();
+      .select('*')
+      .eq('id', 'main');
 
-    if (data?.data) {
-      DB = data.data;
+    if (!error && data && data.length > 0 && data[0].data) {
+      DB = data[0].data;
       localStorage.setItem('mrc_db11', JSON.stringify(DB));
       applyDBMigrations();
+      await _supabase.from('app_data').upsert({
+        id: 'main',
+        data: DB,
+        updated_at: new Date().toISOString()
+      });
     } else {
       applyDBMigrations();
+      await _supabase.from('app_data').upsert({
+        id: 'main',
+        data: DB,
+        updated_at: new Date().toISOString()
+      });
+      localStorage.setItem('mrc_db11', JSON.stringify(DB));
     }
   } catch(e) {
-    console.warn('Supabase load failed, using localStorage:', e);
+    console.warn('Supabase load failed:', e);
     applyDBMigrations();
   }
 
