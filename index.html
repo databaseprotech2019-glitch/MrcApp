@@ -809,16 +809,15 @@ async function loadDBFromSupabase() {
       .from('app_data')
       .select('data')
       .eq('id', 'main')
-      .single();
-
+      .maybeSingle();
     if (data?.data) {
       DB = data.data;
-      localStorage.setItem('mrc_db11', JSON.stringify(DB)); // cache update
+      localStorage.setItem('mrc_db11', JSON.stringify(DB));
       applyDBMigrations();
       return true;
     }
   } catch (err) {
-    console.warn('Supabase load failed, using localStorage:', err.message);
+    console.warn('Supabase load failed:', err.message);
   }
   return false;
 }
@@ -841,8 +840,8 @@ function applyDBMigrations() {
   if(!DB.settings.googleReviewLink)DB.settings.googleReviewLink='https://g.page/r/propeller-review';
   if(!DB.settings.communityLink)DB.settings.communityLink='https://chat.whatsapp.com/propeller-community';
   if(!DB.users['admin@propeller.com']){
-  DB.users['admin@propeller.com']={name:'Admin',password:'admin123',role:'admin',level:'basic',email:'admin@propeller.com',joinedAt:Date.now()};
-}
+    DB.users['admin@propeller.com']={name:'Admin',password:'admin123',role:'admin',level:'basic',email:'admin@propeller.com',joinedAt:Date.now()};
+  }
 }
 
 const GuideDB = {
@@ -3405,7 +3404,10 @@ document.addEventListener('click',function(e){
 
 window.addEventListener('load', async () => {
   document.getElementById('auth-page').style.opacity = '0.5';
-
+  
+  // Clear old localStorage to avoid conflicts
+  const oldDB = JSON.parse(localStorage.getItem('mrc_db11') || '{"users":{}}');
+  
   try {
     const { data, error } = await _supabase
       .from('app_data')
@@ -3414,47 +3416,48 @@ window.addEventListener('load', async () => {
       .maybeSingle();
 
     if (data?.data) {
-      // Supabase data-ஐ local-ஓட merge பண்ணு — எந்த device-லயும் data போகாது
-      const local = JSON.parse(localStorage.getItem('mrc_db11') || '{}');
-      const remote = data.data;
-
-      // Remote-ஐ base-ஆ வச்சு local changes merge பண்ணு
-      DB = { ...remote };
-      DB.users = { ...remote.users, ...local.users };
-      DB.progress = { ...remote.progress, ...local.progress };
-      DB.attendance = { ...remote.attendance, ...local.attendance };
-      DB.feedbacks = { ...remote.feedbacks, ...local.feedbacks };
-      DB.certificates = { ...remote.certificates, ...local.certificates };
-      DB.activities = { ...remote.activities, ...local.activities };
-      DB.studentsPlus = { ...remote.studentsPlus, ...local.studentsPlus };
-      DB.referrals = local.referrals?.length >= (remote.referrals?.length || 0)
-        ? local.referrals : remote.referrals;
-      DB.information = local.information?.length >= (remote.information?.length || 0)
-        ? local.information : remote.information;
-      DB.freeCourses = local.freeCourses?.length >= (remote.freeCourses?.length || 0)
-        ? local.freeCourses : remote.freeCourses;
-
+      // Supabase has data — use it as master
+      DB = data.data;
       localStorage.setItem('mrc_db11', JSON.stringify(DB));
       applyDBMigrations();
-
-      // Sync back to Supabase
+      // Save migrations back
       await _supabase.from('app_data').upsert({
         id: 'main',
         data: DB,
         updated_at: new Date().toISOString()
       });
-
     } else {
-      // First time — local data-ஐ Supabase-க்கு push பண்ணு
+      // No Supabase data — fresh start
+      DB = {
+        users: {},
+        progress: {},
+        attendance: {},
+        feedbacks: {},
+        remarks: {},
+        information: [],
+        certificates: {},
+        referrals: [],
+        activities: {},
+        parentFeedbacks: [],
+        freeCourses: [],
+        profilePics: {},
+        studentsPlus: {},
+        settings: {
+          googleReviewLink: 'https://g.page/r/propeller-review',
+          communityLink: 'https://chat.whatsapp.com/propeller-community'
+        }
+      };
       applyDBMigrations();
       await _supabase.from('app_data').upsert({
         id: 'main',
         data: DB,
         updated_at: new Date().toISOString()
       });
+      localStorage.setItem('mrc_db11', JSON.stringify(DB));
     }
   } catch(e) {
     console.warn('Supabase load failed, using localStorage:', e);
+    DB = oldDB;
     applyDBMigrations();
   }
 
