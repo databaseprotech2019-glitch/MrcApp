@@ -789,38 +789,12 @@ const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 // ══════════════════════════════════════════
 async function saveDB() {
   localStorage.setItem('mrc_db11', JSON.stringify(DB));
-  
   try {
-    // First load latest from Supabase
-    const { data: latest } = await _supabase
-      .from('app_data')
-      .select('data')
-      .eq('id', 'main')
-      .single();
-    
-    // Merge latest with current changes
-    if (latest?.data) {
-      const merged = { ...latest.data, ...DB };
-      merged.users = { ...latest.data.users, ...DB.users };
-      merged.progress = { ...latest.data.progress, ...DB.progress };
-      merged.attendance = { ...latest.data.attendance, ...DB.attendance };
-      merged.feedbacks = { ...latest.data.feedbacks, ...DB.feedbacks };
-      
-      await _supabase.from('app_data').upsert({
-        id: 'main',
-        data: merged,
-        updated_at: new Date().toISOString()
-      });
-      
-      DB = merged;
-      localStorage.setItem('mrc_db11', JSON.stringify(DB));
-    } else {
-      await _supabase.from('app_data').upsert({
-        id: 'main',
-        data: DB,
-        updated_at: new Date().toISOString()
-      });
-    }
+    await _supabase.from('app_data').upsert({
+      id: 'main',
+      data: DB,
+      updated_at: new Date().toISOString()
+    });
   } catch (err) {
     console.warn('Supabase sync failed:', err.message);
   }
@@ -3433,19 +3407,51 @@ window.addEventListener('load', async () => {
   document.getElementById('auth-page').style.opacity = '0.5';
 
   try {
-    // Always load from Supabase first
     const { data, error } = await _supabase
       .from('app_data')
       .select('data')
       .eq('id', 'main')
-      .single();
+      .maybeSingle();
 
     if (data?.data) {
-      DB = data.data;
+      // Supabase data-ஐ local-ஓட merge பண்ணு — எந்த device-லயும் data போகாது
+      const local = JSON.parse(localStorage.getItem('mrc_db11') || '{}');
+      const remote = data.data;
+
+      // Remote-ஐ base-ஆ வச்சு local changes merge பண்ணு
+      DB = { ...remote };
+      DB.users = { ...remote.users, ...local.users };
+      DB.progress = { ...remote.progress, ...local.progress };
+      DB.attendance = { ...remote.attendance, ...local.attendance };
+      DB.feedbacks = { ...remote.feedbacks, ...local.feedbacks };
+      DB.certificates = { ...remote.certificates, ...local.certificates };
+      DB.activities = { ...remote.activities, ...local.activities };
+      DB.studentsPlus = { ...remote.studentsPlus, ...local.studentsPlus };
+      DB.referrals = local.referrals?.length >= (remote.referrals?.length || 0)
+        ? local.referrals : remote.referrals;
+      DB.information = local.information?.length >= (remote.information?.length || 0)
+        ? local.information : remote.information;
+      DB.freeCourses = local.freeCourses?.length >= (remote.freeCourses?.length || 0)
+        ? local.freeCourses : remote.freeCourses;
+
       localStorage.setItem('mrc_db11', JSON.stringify(DB));
       applyDBMigrations();
+
+      // Sync back to Supabase
+      await _supabase.from('app_data').upsert({
+        id: 'main',
+        data: DB,
+        updated_at: new Date().toISOString()
+      });
+
     } else {
+      // First time — local data-ஐ Supabase-க்கு push பண்ணு
       applyDBMigrations();
+      await _supabase.from('app_data').upsert({
+        id: 'main',
+        data: DB,
+        updated_at: new Date().toISOString()
+      });
     }
   } catch(e) {
     console.warn('Supabase load failed, using localStorage:', e);
