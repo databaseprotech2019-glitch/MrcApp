@@ -809,7 +809,7 @@ async function loadDBFromSupabase() {
       .from('app_data')
       .select('data')
       .eq('id', 'main')
-      .maybeSingle();
+      .limit(1).then(r => ({data: r.data?.[0] ? {data: r.data[0].data} : null, error: r.error}));
     if (data?.data) {
       DB = data.data;
       localStorage.setItem('mrc_db11', JSON.stringify(DB));
@@ -3404,47 +3404,33 @@ document.addEventListener('click',function(e){
 
 window.addEventListener('load', async () => {
   document.getElementById('auth-page').style.opacity = '0.5';
-  
-  // Clear old localStorage to avoid conflicts
-  const oldDB = JSON.parse(localStorage.getItem('mrc_db11') || '{"users":{}}');
-  
+
   try {
     const { data, error } = await _supabase
       .from('app_data')
       .select('data')
-      .eq('id', 'main')
-      .maybeSingle();
+      .eq('id', 'main');
 
-    if (data?.data) {
-      // Supabase has data — use it as master
-      DB = data.data;
+    const row = data?.[0];
+
+    if (row?.data) {
+      DB = row.data;
       localStorage.setItem('mrc_db11', JSON.stringify(DB));
       applyDBMigrations();
-      // Save migrations back
       await _supabase.from('app_data').upsert({
         id: 'main',
         data: DB,
         updated_at: new Date().toISOString()
       });
     } else {
-      // No Supabase data — fresh start
       DB = {
-        users: {},
-        progress: {},
-        attendance: {},
-        feedbacks: {},
-        remarks: {},
-        information: [],
-        certificates: {},
-        referrals: [],
-        activities: {},
-        parentFeedbacks: [],
-        freeCourses: [],
-        profilePics: {},
-        studentsPlus: {},
-        settings: {
-          googleReviewLink: 'https://g.page/r/propeller-review',
-          communityLink: 'https://chat.whatsapp.com/propeller-community'
+        users:{},progress:{},attendance:{},feedbacks:{},
+        remarks:{},information:[],certificates:{},referrals:[],
+        activities:{},parentFeedbacks:[],freeCourses:[],
+        profilePics:{},studentsPlus:{},
+        settings:{
+          googleReviewLink:'https://g.page/r/propeller-review',
+          communityLink:'https://chat.whatsapp.com/propeller-community'
         }
       };
       applyDBMigrations();
@@ -3456,8 +3442,7 @@ window.addEventListener('load', async () => {
       localStorage.setItem('mrc_db11', JSON.stringify(DB));
     }
   } catch(e) {
-    console.warn('Supabase load failed, using localStorage:', e);
-    DB = oldDB;
+    console.warn('Supabase load failed:', e);
     applyDBMigrations();
   }
 
